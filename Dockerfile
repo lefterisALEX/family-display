@@ -23,14 +23,16 @@ RUN npm ci --omit=dev
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/package.json ./package.json
 COPY --from=prod-deps /app/apps/api/package.json ./apps/api/package.json
 COPY --from=prod-deps /app/apps/web/package.json ./apps/web/package.json
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/web/dist ./apps/web/dist
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN mkdir -p /data && chown -R node:node /data
 ENV DATA_DIR=/data PORT=3000 STATIC_DIR=/app/apps/web/dist
 EXPOSE 3000
-USER node
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "apps/api/dist/index.js"]
