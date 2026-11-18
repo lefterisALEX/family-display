@@ -1,0 +1,22 @@
+services:
+  calendar:
+    build: .
+    container_name: family-calendar
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATA_DIR=/data
+      - TZ=${TZ:-Europe/Amsterdam}
+      - SYNC_INTERVAL_MS=900000
+    volumes:
+      - calendar-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  calendar-data:

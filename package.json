@@ -1,0 +1,22 @@
+{
+  "name": "family-calendar",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @family-calendar/api\" \"npm run dev -w @family-calendar/web\"",
+    "build": "npm run build -w @family-calendar/web && npm run build -w @family-calendar/api",
+    "start": "npm run start -w @family-calendar/api",
+    "typecheck": "npm run typecheck -w @family-calendar/api && npm run typecheck -w @family-calendar/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
+  }
+}
