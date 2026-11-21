@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from './api';
-import type { CalendarEvent, Source } from './types';
+import type { CalendarEvent, Source, WeatherConfig } from './types';
 import { addDays, formatDate, startOfWeek } from './date';
 import { Header } from './components/Header';
 import { Legend } from './components/Legend';
 import { WeekView } from './components/WeekView';
 import { AgendaView } from './components/AgendaView';
+import { WeatherView } from './components/WeatherView';
 import { SettingsModal } from './components/SettingsModal';
 
 const RANGE_DAYS = 14;
@@ -15,9 +16,11 @@ export default function App() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [view, setView] = useState<'week' | 'agenda'>('week');
+  const [tab, setTab] = useState<'calendar' | 'weather'>('calendar');
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeZone, setTimeZone] = useState<string | undefined>(undefined);
+  const [weather, setWeather] = useState<WeatherConfig | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -41,6 +44,7 @@ export default function App() {
   const loadSettings = useCallback(async () => {
     const settings = await api.getSettings();
     setTimeZone(settings.timezone);
+    setWeather(settings.weather);
   }, []);
 
   const loadEvents = useCallback(async () => {
@@ -113,6 +117,8 @@ export default function App() {
   return (
     <div className="flex h-full flex-col">
       <Header
+        tab={tab}
+        onTabChange={setTab}
         view={view}
         onViewChange={setView}
         rangeLabel={rangeLabel}
@@ -124,7 +130,9 @@ export default function App() {
         onSettings={() => setSettingsOpen(true)}
       />
 
-      <Legend sources={sources} visibleIds={visibleIds} onToggle={toggleSource} />
+      {tab === 'calendar' && (
+        <Legend sources={sources} visibleIds={visibleIds} onToggle={toggleSource} />
+      )}
 
       <main className="flex-1 overflow-hidden p-2 sm:p-3">
         {error && (
@@ -133,7 +141,9 @@ export default function App() {
           </div>
         )}
 
-        {loading ? (
+        {tab === 'weather' ? (
+          <WeatherView weather={weather} timeZone={timeZone} />
+        ) : loading ? (
           <div className="flex h-full items-center justify-center text-slate-500">
             Loading…
           </div>
@@ -148,6 +158,7 @@ export default function App() {
         <SettingsModal
           sources={sources}
           timeZone={timeZone}
+          weather={weather}
           onClose={() => setSettingsOpen(false)}
           onChanged={async () => {
             await Promise.all([loadSources(), loadSettings()]);

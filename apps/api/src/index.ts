@@ -11,6 +11,7 @@ import { syncAll, syncSource } from './sync.js';
 import { pickColor } from './colors.js';
 import { toDateString } from './dates.js';
 import { getTimezone, isValidTimezone } from './timezone.js';
+import { fetchWeather, getWeatherConfig, invalidateWeatherCache } from './weather.js';
 import type {
   CalendarEvent,
   EventRow,
@@ -81,20 +82,44 @@ const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
 app.get('/api/health', async () => ({ ok: true, time: new Date().toISOString() }));
 
-app.get('/api/settings', async () => ({ timezone: getTimezone() }));
+app.get('/api/settings', async () => ({
+  timezone: getTimezone(),
+  weather: getWeatherConfig(),
+}));
+
+const weatherUnitsSchema = z.enum(['c', 'f']);
 
 app.put('/api/settings', async (req) => {
   const body = z.object({
-    timezone: z.string().trim().min(1).max(100),
+    timezone: z.string().trim().min(1).max(100).optional(),
+    weather: z.object({
+      latitude: z.union([z.number(), z.string()]).optional(),
+      longitude: z.union([z.number(), z.string()]).optional(),
+      units: weatherUnitsSchema.optional(),
+    }).optional(),
   }).parse(req.body);
 
-  if (!isValidTimezone(body.timezone)) {
-    throw new Error(`Invalid timezone: ${body.timezone}`);
+  if (body.timezone !== undefined) {
+    if (!isValidTimezone(body.timezone)) {
+      throw new Error(`Invalid timezone: ${body.timezone}`);
+    }
+    setSetting('timezone', body.timezone);
   }
 
-  setSetting('timezone', body.timezone);
-  return { timezone: body.timezone };
+  if (body.weather) {
+    if (body.weather.latitude !== undefined) setSetting('weather.latitude', String(body.weather.latitude));
+    if (body.weather.longitude !== undefined) setSetting('weather.longitude', String(body.weather.longitude));
+    if (body.weather.units !== undefined) setSetting('weather.units', body.weather.units);
+    invalidateWeatherCache();
+  }
+
+  return {
+    timezone: getTimezone(),
+    weather: getWeatherConfig(),
+  };
 });
+
+app.get('/api/weather', async () => fetchWeather());
 
 app.get('/api/sources', async () => {
   const rows = db.prepare('SELECT * FROM sources ORDER BY created_at ASC').all() as SourceRow[];

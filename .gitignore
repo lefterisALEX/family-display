@@ -12,3 +12,6 @@ data/
 *.db
 .beads-credential-key
 .beads.gate.lock
+
+# Beads / Dolt files (added by bd init)
+.beads/proxieddb/

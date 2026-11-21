@@ -28,3 +28,35 @@ export interface CalendarEvent {
   organizer: string | null;
   recurrenceId: string | null;
 }
+
+export type WeatherUnits = 'c' | 'f';
+
+export interface WeatherConfig {
+  latitude: number | null;
+  longitude: number | null;
+  units: WeatherUnits;
+}
+
+export interface WeatherDay {
+  date: string;
+  code: number;
+  min: number;
+  max: number;
+  precip: number | null;
+}
+
+export interface WeatherResponse {
+  configured: boolean;
+  location?: { latitude: number; longitude: number };
+  units: WeatherUnits;
+  current?: {
+    temp: number;
+    code: number;
+    isDay: boolean;
+    humidity: number | null;
+    time: string;
+  };
+  daily?: WeatherDay[];
+  fetchedAt: string;
+  error?: string;
+}

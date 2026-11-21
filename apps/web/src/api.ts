@@ -1,4 +1,9 @@
-import type { CalendarEvent, Source } from './types';
+import type {
+  CalendarEvent,
+  Source,
+  WeatherConfig,
+  WeatherResponse,
+} from './types';
 
 const BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
@@ -62,12 +67,17 @@ export const api = {
     ),
 
   getSettings: () =>
-    fetch(`${BASE}/settings`).then((r) => json<{ timezone: string }>(r)),
+    fetch(`${BASE}/settings`).then((r) =>
+      json<{ timezone: string; weather: WeatherConfig }>(r),
+    ),
 
-  updateSettings: (body: { timezone: string }) =>
+  updateSettings: (body: { timezone?: string; weather?: Partial<WeatherConfig> }) =>
     fetch(`${BASE}/settings`, {
       method: 'PUT',
       headers: jsonHeaders(),
       body: JSON.stringify(body),
-    }).then((r) => json<{ timezone: string }>(r)),
+    }).then((r) => json<{ timezone: string; weather: WeatherConfig }>(r)),
+
+  getWeather: () =>
+    fetch(`${BASE}/weather`).then((r) => json<WeatherResponse>(r)),
 };
