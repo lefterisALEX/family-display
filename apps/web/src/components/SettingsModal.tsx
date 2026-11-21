@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Source } from '../types';
+import type { Source, WeatherConfig } from '../types';
 import { api } from '../api';
 
 interface SettingsModalProps {
   sources: Source[];
   timeZone?: string;
+  weather?: WeatherConfig;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }
@@ -203,9 +204,110 @@ function TimezonePicker({
   );
 }
 
+function WeatherSettings({
+  weather,
+  onChanged,
+}: {
+  weather?: WeatherConfig;
+  onChanged: () => Promise<void>;
+}) {
+  const [latitude, setLatitude] = useState(weather?.latitude?.toString() ?? '');
+  const [longitude, setLongitude] = useState(weather?.longitude?.toString() ?? '');
+  const [units, setUnits] = useState<'c' | 'f'>(weather?.units ?? 'c');
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLatitude(weather?.latitude?.toString() ?? '');
+    setLongitude(weather?.longitude?.toString() ?? '');
+    setUnits(weather?.units ?? 'c');
+  }, [weather]);
+
+  async function save() {
+    setBusy(true);
+    setSaved(false);
+    setError(null);
+    try {
+      await api.updateSettings({
+        weather: {
+          latitude: latitude.trim() ? Number(latitude.trim()) : undefined,
+          longitude: longitude.trim() ? Number(longitude.trim()) : undefined,
+          units,
+        },
+      });
+      setSaved(true);
+      await onChanged();
+      window.setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-200">Weather</h3>
+        {saved && <span className="text-xs text-emerald-400">Saved</span>}
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <input
+          value={latitude}
+          onChange={(e) => setLatitude(e.target.value)}
+          placeholder="Latitude (e.g. 52.3676)"
+          inputMode="decimal"
+          className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+        />
+        <input
+          value={longitude}
+          onChange={(e) => setLongitude(e.target.value)}
+          placeholder="Longitude (e.g. 4.9041)"
+          inputMode="decimal"
+          className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+        />
+      </div>
+      <div className="mt-2 flex items-center gap-3">
+        <div className="flex rounded-lg border border-slate-800 p-0.5">
+          <button
+            onClick={() => setUnits('c')}
+            className={`rounded-md px-2 py-1 text-xs ${
+              units === 'c' ? 'bg-slate-700 text-slate-100' : 'text-slate-400'
+            }`}
+          >
+            °C
+          </button>
+          <button
+            onClick={() => setUnits('f')}
+            className={`rounded-md px-2 py-1 text-xs ${
+              units === 'f' ? 'bg-slate-700 text-slate-100' : 'text-slate-400'
+            }`}
+          >
+            °F
+          </button>
+        </div>
+        <button
+          onClick={save}
+          disabled={busy}
+          className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-sky-400 disabled:opacity-50"
+        >
+          {busy ? 'Saving…' : 'Save weather'}
+        </button>
+        {error && <span className="text-xs text-red-400">{error}</span>}
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+        Enter the latitude and longitude of the home location. Forecast updates
+        every ~15 minutes via Open-Meteo (no API key needed).
+      </p>
+    </div>
+  );
+}
+
 export function SettingsModal({
   sources,
   timeZone,
+  weather,
   onClose,
   onChanged,
 }: SettingsModalProps) {
@@ -298,6 +400,7 @@ export function SettingsModal({
         </div>
 
         <TimezonePicker timeZone={timeZone} onChanged={onChanged} />
+        <WeatherSettings weather={weather} onChanged={onChanged} />
       </div>
     </div>
   );
