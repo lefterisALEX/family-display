@@ -514,25 +514,29 @@ function EntityPicker({
   onChange: (list: HaEntityRef[]) => void;
 }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<HaEntityRef[]>([]);
-  const [searched, setSearched] = useState(false);
+  const [all, setAll] = useState<HaEntityRef[]>([]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function search() {
-    if (!query.trim()) return;
+  useEffect(() => {
+    let active = true;
     setBusy(true);
-    setSearched(false);
-    try {
-      const found = await api.listHaEntities(type, query.trim());
-      setResults(found);
-      setSearched(true);
-    } catch (err) {
-      setResults([]);
-      setSearched(true);
-    } finally {
-      setBusy(false);
-    }
-  }
+    setError(null);
+    api
+      .listHaEntities(type, '')
+      .then((found) => {
+        if (active) setAll(found);
+      })
+      .catch((err) => {
+        if (active) setError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (active) setBusy(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [type]);
 
   function add(ref: HaEntityRef) {
     if (entities.some((e) => e.id === ref.id)) return;
@@ -543,7 +547,12 @@ function EntityPicker({
     onChange(entities.filter((e) => e.id !== id));
   }
 
-  const remaining = results.filter((r) => !entities.some((e) => e.id === r.id));
+  const needle = query.trim().toLowerCase();
+  const available = all
+    .filter((r) => !entities.some((e) => e.id === r.id))
+    .filter(
+      (r) => !needle || `${r.name} ${r.id}`.toLowerCase().includes(needle),
+    );
 
   return (
     <div className="mt-3">
@@ -573,33 +582,19 @@ function EntityPicker({
           </div>
         )}
       </div>
-      <div className="mt-2 flex gap-2">
-        <input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setSearched(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              void search();
-            }
-          }}
-          placeholder={`Search ${type}…`}
-          className="min-w-0 flex-1 rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-500"
-        />
-        <button
-          onClick={search}
-          disabled={busy || !query.trim()}
-          className="shrink-0 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50"
-        >
-          {busy ? '…' : 'Search'}
-        </button>
-      </div>
-      {remaining.length > 0 && (
-        <div className="mt-1 space-y-0.5">
-          {remaining.map((r) => (
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={`Filter ${label.toLowerCase()}…`}
+        className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-500"
+      />
+      {error && <div className="mt-1 text-[11px] text-red-400">{error}</div>}
+      {busy && !error && (
+        <div className="mt-1 text-[11px] text-slate-500">Loading entities…</div>
+      )}
+      {!busy && !error && available.length > 0 && (
+        <div className="mt-1 max-h-40 space-y-0.5 overflow-y-auto">
+          {available.map((r) => (
             <button
               key={r.id}
               onClick={() => add(r)}
@@ -611,11 +606,11 @@ function EntityPicker({
           ))}
         </div>
       )}
-      {searched && remaining.length === 0 && results.length > 0 && (
-        <div className="mt-1 text-[11px] text-slate-600">All results already added.</div>
+      {!busy && !error && available.length === 0 && all.length > 0 && (
+        <div className="mt-1 text-[11px] text-slate-600">All available entities already added.</div>
       )}
-      {searched && results.length === 0 && (
-        <div className="mt-1 text-[11px] text-slate-600">No entities found.</div>
+      {!busy && !error && all.length === 0 && (
+        <div className="mt-1 text-[11px] text-slate-600">No {type} found in Home Assistant.</div>
       )}
     </div>
   );

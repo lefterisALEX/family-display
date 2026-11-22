@@ -96,7 +96,7 @@ export async function listHaEntities(type: string, search: string): Promise<HaEn
   return states
     .filter((s) => domains.some((d) => s.entity_id.startsWith(`${d}.`)))
     .filter((s) => !needle || `${s.entity_id} ${friendlyName(s)}`.toLowerCase().includes(needle))
-    .slice(0, 50)
+    .slice(0, 200)
     .map((s) => ({ id: s.entity_id, name: friendlyName(s) }));
 }
 
