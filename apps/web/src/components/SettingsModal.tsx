@@ -210,6 +210,26 @@ function TimezonePicker({
   );
 }
 
+interface GeoResult {
+  name: string;
+  latitude: number;
+  longitude: number;
+  country?: string;
+  admin1?: string;
+}
+
+function searchCities(query: string): Promise<GeoResult[]> {
+  const params = new URLSearchParams({
+    name: query,
+    count: '6',
+    language: 'en',
+    format: 'json',
+  });
+  return fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`)
+    .then((r) => r.json())
+    .then((data: { results?: GeoResult[] }) => data.results ?? []);
+}
+
 function WeatherSettings({
   weather,
   onChanged,
@@ -224,6 +244,10 @@ function WeatherSettings({
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<GeoResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
 
   useEffect(() => {
     setLatitude(weather?.latitude?.toString() ?? '');
@@ -231,6 +255,33 @@ function WeatherSettings({
     setLocation(weather?.location ?? '');
     setUnits(weather?.units ?? 'c');
   }, [weather]);
+
+  async function doSearch() {
+    const q = query.trim();
+    if (!q) return;
+    setSearching(true);
+    setSearched(false);
+    setResults([]);
+    try {
+      const found = await searchCities(q);
+      setResults(found);
+      setSearched(true);
+    } catch {
+      setResults([]);
+      setSearched(true);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function pickCity(city: GeoResult) {
+    setLatitude(city.latitude.toFixed(4));
+    setLongitude(city.longitude.toFixed(4));
+    setLocation(city.name);
+    setQuery(city.name);
+    setResults([]);
+    setSearched(false);
+  }
 
   async function save() {
     setBusy(true);
@@ -261,7 +312,53 @@ function WeatherSettings({
         <h3 className="text-sm font-semibold text-slate-200">Weather</h3>
         {saved && <span className="text-xs text-emerald-400">Saved</span>}
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="flex gap-2">
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSearched(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void doSearch();
+            }
+          }}
+          placeholder="Search for a city…"
+          className="min-w-0 flex-1 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+        />
+        <button
+          onClick={doSearch}
+          disabled={searching || !query.trim()}
+          className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+        >
+          {searching ? '…' : 'Search'}
+        </button>
+      </div>
+      {results.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {results.map((city) => (
+            <li key={`${city.name}-${city.latitude}-${city.longitude}`}>
+              <button
+                onClick={() => pickCity(city)}
+                className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+              >
+                {city.name}
+                {[city.admin1, city.country].filter(Boolean).length > 0 && (
+                  <span className="ml-1 text-xs text-slate-500">
+                    {[city.admin1, city.country].filter(Boolean).join(', ')}
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {searched && results.length === 0 && (
+        <div className="mt-2 text-xs text-slate-500">No cities found.</div>
+      )}
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input
           value={latitude}
           onChange={(e) => setLatitude(e.target.value)}
@@ -312,8 +409,9 @@ function WeatherSettings({
         {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
       <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-        Enter the latitude and longitude of the home location. Forecast updates
-        every ~15 minutes via Open-Meteo (no API key needed).
+        Search for a city to auto-fill the coordinates, or enter latitude and
+        longitude manually. The location name is shown on the weather tab.
+        Forecast updates every ~15 minutes via Open-Meteo (no API key needed).
       </p>
     </div>
   );
