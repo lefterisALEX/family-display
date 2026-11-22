@@ -8,6 +8,7 @@ import { WeekView } from './components/WeekView';
 import { AgendaView } from './components/AgendaView';
 import { WeatherView } from './components/WeatherView';
 import { SettingsModal } from './components/SettingsModal';
+import { useWakeLock, getWakeLockEnabled, setWakeLockEnabled as persistWakeLock } from './useWakeLock';
 
 const RANGE_DAYS = 14;
 
@@ -24,6 +25,13 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [wakeLockEnabled, setWakeLockEnabledState] = useState(getWakeLockEnabled);
+  const wakeLockState = useWakeLock(wakeLockEnabled);
+
+  const toggleWakeLock = (value: boolean) => {
+    persistWakeLock(value);
+    setWakeLockEnabledState(value);
+  };
 
   const loadSources = useCallback(async () => {
     const next = await api.getSources();
@@ -122,6 +130,8 @@ export default function App() {
         view={view}
         onViewChange={setView}
         rangeLabel={rangeLabel}
+        timeZone={timeZone}
+        wakeLockState={wakeLockState}
         onPrev={() => setWeekStart((d) => addDays(d, -RANGE_DAYS))}
         onNext={() => setWeekStart((d) => addDays(d, RANGE_DAYS))}
         onToday={() => setWeekStart(startOfWeek(new Date()))}
@@ -159,6 +169,9 @@ export default function App() {
           sources={sources}
           timeZone={timeZone}
           weather={weather}
+          wakeLockEnabled={wakeLockEnabled}
+          wakeLockState={wakeLockState}
+          onWakeLockChange={toggleWakeLock}
           onClose={() => setSettingsOpen(false)}
           onChanged={async () => {
             await Promise.all([loadSources(), loadSettings()]);

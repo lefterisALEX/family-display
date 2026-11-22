@@ -1,9 +1,13 @@
+import { Clock } from './Clock';
+
 interface HeaderProps {
   tab: 'calendar' | 'weather';
   onTabChange: (tab: 'calendar' | 'weather') => void;
   view: 'week' | 'agenda';
   onViewChange: (view: 'week' | 'agenda') => void;
   rangeLabel: string;
+  timeZone?: string;
+  wakeLockState: 'active' | 'released' | 'failed' | 'unsupported' | 'off';
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -11,6 +15,14 @@ interface HeaderProps {
   syncing: boolean;
   onSettings: () => void;
 }
+
+const WAKE_LOCK_ICON: Record<HeaderProps['wakeLockState'], string> = {
+  active: '💡',
+  released: '🌙',
+  failed: '⚠️',
+  unsupported: '',
+  off: '',
+};
 
 export function Header(props: HeaderProps) {
   return (
@@ -112,6 +124,17 @@ export function Header(props: HeaderProps) {
         >
           Settings
         </button>
+
+        <div
+          className="flex items-center gap-2"
+          title={`Wake lock: ${props.wakeLockState}`}
+          aria-label={`Wake lock: ${props.wakeLockState}`}
+        >
+          {WAKE_LOCK_ICON[props.wakeLockState] && (
+            <span className="text-sm leading-none">{WAKE_LOCK_ICON[props.wakeLockState]}</span>
+          )}
+          <Clock timeZone={props.timeZone} />
+        </div>
       </div>
     </header>
   );

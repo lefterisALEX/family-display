@@ -6,6 +6,9 @@ interface SettingsModalProps {
   sources: Source[];
   timeZone?: string;
   weather?: WeatherConfig;
+  wakeLockEnabled: boolean;
+  wakeLockState: 'active' | 'released' | 'failed' | 'unsupported' | 'off';
+  onWakeLockChange: (enabled: boolean) => void;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }
@@ -304,10 +307,58 @@ function WeatherSettings({
   );
 }
 
+function WakeLockSettings({
+  enabled,
+  state,
+  onChange,
+}: {
+  enabled: boolean;
+  state: SettingsModalProps['wakeLockState'];
+  onChange: (enabled: boolean) => void;
+}) {
+  const statusText: Record<SettingsModalProps['wakeLockState'], string> = {
+    active: 'Screen is being kept awake',
+    released: 'Not holding the screen',
+    failed: 'Wake lock failed (browser refused)',
+    unsupported: 'Wake lock not supported by this browser',
+    off: 'Wake lock disabled',
+  };
+
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-200">Wake lock</h3>
+        <button
+          onClick={() => onChange(!enabled)}
+          className={`relative h-6 w-11 rounded-full transition-colors ${
+            enabled ? 'bg-sky-500' : 'bg-slate-700'
+          }`}
+          role="switch"
+          aria-checked={enabled}
+          aria-label="Toggle wake lock"
+        >
+          <span
+            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+              enabled ? 'translate-x-5' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+        {statusText[state]}. Keeps the screen on while this tab is open so the
+        display never sleeps. Requires a secure connection (HTTPS or localhost).
+      </p>
+    </div>
+  );
+}
+
 export function SettingsModal({
   sources,
   timeZone,
   weather,
+  wakeLockEnabled,
+  wakeLockState,
+  onWakeLockChange,
   onClose,
   onChanged,
 }: SettingsModalProps) {
@@ -401,6 +452,11 @@ export function SettingsModal({
 
         <TimezonePicker timeZone={timeZone} onChanged={onChanged} />
         <WeatherSettings weather={weather} onChanged={onChanged} />
+        <WakeLockSettings
+          enabled={wakeLockEnabled}
+          state={wakeLockState}
+          onChange={onWakeLockChange}
+        />
       </div>
     </div>
   );
