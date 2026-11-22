@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from './api';
 import type { CalendarEvent, Source, WeatherConfig } from './types';
-import { addDays, formatDate, startOfWeek } from './date';
+import { addDays, startOfWeek } from './date';
 import { Header } from './components/Header';
 import { Legend } from './components/Legend';
 import { WeekView } from './components/WeekView';
@@ -15,10 +15,19 @@ const RANGE_DAYS = 14;
 
 const AUTO_RETURN_MS = 5 * 60 * 1000;
 const AUTO_RETURN_KEY = 'family-display:auto-return';
+const AUTO_RETURN_TODAY_KEY = 'family-display:auto-return-today';
 
 function getAutoReturn(): boolean {
   try {
     return localStorage.getItem(AUTO_RETURN_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+function getAutoReturnToday(): boolean {
+  try {
+    return localStorage.getItem(AUTO_RETURN_TODAY_KEY) !== '0';
   } catch {
     return true;
   }
@@ -41,6 +50,7 @@ export default function App() {
   const wakeLockState = useWakeLock(wakeLockEnabled);
   const [clockFormat, setClockFormatState] = useState(getClockFormat);
   const [autoReturn, setAutoReturnState] = useState(getAutoReturn);
+  const [autoReturnToday, setAutoReturnTodayState] = useState(getAutoReturnToday);
 
   const toggleWakeLock = (value: boolean) => {
     persistWakeLock(value);
@@ -61,11 +71,30 @@ export default function App() {
     setAutoReturnState(value);
   };
 
+  const toggleAutoReturnToday = (value: boolean) => {
+    try {
+      localStorage.setItem(AUTO_RETURN_TODAY_KEY, value ? '1' : '0');
+    } catch {
+      // ignore storage failures
+    }
+    setAutoReturnTodayState(value);
+  };
+
   useEffect(() => {
     if (!autoReturn || tab !== 'weather') return;
     const id = window.setTimeout(() => setTab('calendar'), AUTO_RETURN_MS);
     return () => window.clearTimeout(id);
   }, [autoReturn, tab]);
+
+  const thisWeekStart = useMemo(() => startOfWeek(new Date()), []);
+
+  useEffect(() => {
+    if (!autoReturnToday || tab !== 'calendar') return;
+    const isCurrentWeek = weekStart.getTime() === thisWeekStart.getTime();
+    if (isCurrentWeek) return;
+    const id = window.setTimeout(() => setWeekStart(thisWeekStart), AUTO_RETURN_MS);
+    return () => window.clearTimeout(id);
+  }, [autoReturnToday, tab, weekStart, thisWeekStart]);
 
   const loadSources = useCallback(async () => {
     const next = await api.getSources();
@@ -151,11 +180,6 @@ export default function App() {
     }
   };
 
-  const rangeLabel = `${formatDate(weekStart, timeZone)} – ${formatDate(
-    addDays(weekStart, RANGE_DAYS - 1),
-    timeZone,
-  )}`;
-
   return (
     <div className="flex h-full flex-col">
       <Header
@@ -163,7 +187,6 @@ export default function App() {
         onTabChange={setTab}
         view={view}
         onViewChange={setView}
-        rangeLabel={rangeLabel}
         timeZone={timeZone}
         clockFormat={clockFormat}
         onPrev={() => setWeekStart((d) => addDays(d, -RANGE_DAYS))}
@@ -210,6 +233,8 @@ export default function App() {
           onClockFormatChange={toggleClockFormat}
           autoReturn={autoReturn}
           onAutoReturnChange={toggleAutoReturn}
+          autoReturnToday={autoReturnToday}
+          onAutoReturnTodayChange={toggleAutoReturnToday}
           onClose={() => setSettingsOpen(false)}
           onChanged={async () => {
             await Promise.all([loadSources(), loadSettings()]);

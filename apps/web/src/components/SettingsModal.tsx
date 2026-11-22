@@ -14,6 +14,8 @@ interface SettingsModalProps {
   onClockFormatChange: (format: ClockFormat) => void;
   autoReturn: boolean;
   onAutoReturnChange: (enabled: boolean) => void;
+  autoReturnToday: boolean;
+  onAutoReturnTodayChange: (enabled: boolean) => void;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }
@@ -459,23 +461,23 @@ function WakeLockSettings({
   );
 }
 
-function AutoReturnSettings({
+function ToggleRow({
+  title,
+  description,
   enabled,
   onChange,
 }: {
+  title: string;
+  description: string;
   enabled: boolean;
   onChange: (enabled: boolean) => void;
 }) {
   return (
     <div className="mt-6 border-t border-slate-800 pt-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-slate-200">
-            Auto-return to calendar
-          </h3>
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            Switches back from the Weather tab to Calendar after 5 minutes.
-          </p>
+          <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
+          <p className="mt-0.5 text-[11px] text-slate-500">{description}</p>
         </div>
         <button
           onClick={() => onChange(!enabled)}
@@ -484,7 +486,7 @@ function AutoReturnSettings({
           }`}
           role="switch"
           aria-checked={enabled}
-          aria-label="Toggle auto-return to calendar"
+          aria-label={`Toggle ${title}`}
         >
           <span
             className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
@@ -540,6 +542,8 @@ export function SettingsModal({
   onClockFormatChange,
   autoReturn,
   onAutoReturnChange,
+  autoReturnToday,
+  onAutoReturnTodayChange,
   onClose,
   onChanged,
 }: SettingsModalProps) {
@@ -636,9 +640,17 @@ export function SettingsModal({
           format={clockFormat}
           onChange={onClockFormatChange}
         />
-        <AutoReturnSettings
+        <ToggleRow
+          title="Auto-return to calendar"
+          description="Switches back from the Weather tab to Calendar after 5 minutes."
           enabled={autoReturn}
           onChange={onAutoReturnChange}
+        />
+        <ToggleRow
+          title="Auto-return to current week"
+          description="Returns to this week after 5 minutes if you browsed other weeks."
+          enabled={autoReturnToday}
+          onChange={onAutoReturnTodayChange}
         />
         <WeatherSettings weather={weather} onChanged={onChanged} />
         <WakeLockSettings

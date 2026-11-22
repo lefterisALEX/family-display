@@ -5,7 +5,6 @@ interface HeaderProps {
   onTabChange: (tab: 'calendar' | 'weather') => void;
   view: 'week' | 'agenda';
   onViewChange: (view: 'week' | 'agenda') => void;
-  rangeLabel: string;
   timeZone?: string;
   clockFormat: ClockFormat;
   onPrev: () => void;
@@ -65,10 +64,6 @@ export function Header(props: HeaderProps) {
             ›
           </button>
         </div>
-      )}
-
-      {props.tab === 'calendar' && (
-        <div className="text-xs text-slate-400 sm:text-sm">{props.rangeLabel}</div>
       )}
 
       <div className="ml-auto flex items-center gap-2">
