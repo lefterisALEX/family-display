@@ -39,19 +39,12 @@ export function Clock({ timeZone, format }: ClockProps) {
     hour12: format === '12',
     timeZone,
   });
-  const date = now.toLocaleDateString(undefined, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone,
-  });
 
   return (
     <div className="flex flex-col items-end leading-tight">
       <span className="text-xl font-semibold tabular-nums text-slate-100 sm:text-2xl">
         {time}
       </span>
-      <span className="text-[10px] text-slate-400 sm:text-xs">{date}</span>
     </div>
   );
 }

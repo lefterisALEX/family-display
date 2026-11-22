@@ -15,6 +15,20 @@ const RANGE_DAYS = 14;
 const AUTO_RETURN_MS = 5 * 60 * 1000;
 const AUTO_RETURN_KEY = 'family-display:auto-return';
 const AUTO_RETURN_TODAY_KEY = 'family-display:auto-return-today';
+const FONT_SCALE_KEY = 'family-display:font-scale';
+
+export type FontScale = '90' | '100' | '110' | '125' | '150';
+
+function getFontScale(): FontScale {
+  try {
+    const value = localStorage.getItem(FONT_SCALE_KEY) as FontScale | null;
+    return value && ['90', '100', '110', '125', '150'].includes(value)
+      ? value
+      : '100';
+  } catch {
+    return '100';
+  }
+}
 
 function getAutoReturn(): boolean {
   try {
@@ -49,6 +63,16 @@ export default function App() {
   const [clockFormat, setClockFormatState] = useState(getClockFormat);
   const [autoReturn, setAutoReturnState] = useState(getAutoReturn);
   const [autoReturnToday, setAutoReturnTodayState] = useState(getAutoReturnToday);
+  const [fontScale, setFontScale] = useState(getFontScale);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FONT_SCALE_KEY, fontScale);
+      document.documentElement.style.fontSize = `${fontScale}%`;
+    } catch {
+      // ignore storage failures
+    }
+  }, [fontScale]);
 
   const toggleWakeLock = (value: boolean) => {
     persistWakeLock(value);
@@ -204,6 +228,8 @@ export default function App() {
           onAutoReturnChange={toggleAutoReturn}
           autoReturnToday={autoReturnToday}
           onAutoReturnTodayChange={toggleAutoReturnToday}
+          fontScale={fontScale}
+          onFontScaleChange={setFontScale}
           onClose={() => setSettingsOpen(false)}
           onChanged={async () => {
             await Promise.all([loadSources(), loadSettings()]);

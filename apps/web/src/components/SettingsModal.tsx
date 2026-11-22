@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Source, WeatherConfig } from '../types';
 import type { ClockFormat } from './Clock';
+import type { FontScale } from '../App';
 import { api } from '../api';
 
 interface SettingsModalProps {
@@ -16,6 +17,8 @@ interface SettingsModalProps {
   onAutoReturnChange: (enabled: boolean) => void;
   autoReturnToday: boolean;
   onAutoReturnTodayChange: (enabled: boolean) => void;
+  fontScale: FontScale;
+  onFontScaleChange: (scale: FontScale) => void;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }
@@ -499,6 +502,43 @@ function ToggleRow({
   );
 }
 
+function FontScaleSettings({
+  scale,
+  onChange,
+}: {
+  scale: FontScale;
+  onChange: (scale: FontScale) => void;
+}) {
+  const options: { value: FontScale; label: string }[] = [
+    { value: '90', label: 'Small' },
+    { value: '100', label: 'Default' },
+    { value: '110', label: 'Large' },
+    { value: '125', label: 'XL' },
+    { value: '150', label: 'XXL' },
+  ];
+
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <h3 className="mb-2 text-sm font-semibold text-slate-200">Font size</h3>
+      <div className="flex w-fit rounded-lg border border-slate-800 p-0.5">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={`rounded-md px-2.5 py-1.5 text-xs ${
+              scale === option.value
+                ? 'bg-slate-700 text-slate-100'
+                : 'text-slate-400'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ClockFormatSettings({
   format,
   onChange,
@@ -544,6 +584,8 @@ export function SettingsModal({
   onAutoReturnChange,
   autoReturnToday,
   onAutoReturnTodayChange,
+  fontScale,
+  onFontScaleChange,
   onClose,
   onChanged,
 }: SettingsModalProps) {
@@ -640,6 +682,7 @@ export function SettingsModal({
           format={clockFormat}
           onChange={onClockFormatChange}
         />
+        <FontScaleSettings scale={fontScale} onChange={onFontScaleChange} />
         <ToggleRow
           title="Auto-return to calendar"
           description="Switches back from the Weather tab to Calendar after 5 minutes."
