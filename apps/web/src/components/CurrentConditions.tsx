@@ -27,13 +27,13 @@ export function CurrentConditions() {
   const unit = data.units === 'f' ? '°F' : '°C';
   return (
     <div
-      className="flex flex-col items-end leading-tight"
+      className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/60 py-1 pl-2.5 pr-3"
       title={data.locationName ?? undefined}
     >
-      <span className="text-xs font-medium tabular-nums text-slate-400">
-        {data.locationName ?? 'Current'}
+      <span className="text-[10px] uppercase tracking-wide text-slate-500">
+        {data.locationName}
       </span>
-      <span className="text-lg font-semibold tabular-nums text-slate-100">
+      <span className="text-sm font-semibold tabular-nums text-slate-100">
         {Math.round(data.current.temp)}
         {unit}
       </span>
