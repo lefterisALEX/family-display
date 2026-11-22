@@ -9,6 +9,7 @@ import { AgendaView } from './components/AgendaView';
 import { WeatherView } from './components/WeatherView';
 import { SettingsModal } from './components/SettingsModal';
 import { useWakeLock, getWakeLockEnabled, setWakeLockEnabled as persistWakeLock } from './useWakeLock';
+import { getClockFormat, setClockFormat as persistClockFormat } from './components/Clock';
 
 const RANGE_DAYS = 14;
 
@@ -27,10 +28,16 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [wakeLockEnabled, setWakeLockEnabledState] = useState(getWakeLockEnabled);
   const wakeLockState = useWakeLock(wakeLockEnabled);
+  const [clockFormat, setClockFormatState] = useState(getClockFormat);
 
   const toggleWakeLock = (value: boolean) => {
     persistWakeLock(value);
     setWakeLockEnabledState(value);
+  };
+
+  const toggleClockFormat = (value: '12' | '24') => {
+    persistClockFormat(value);
+    setClockFormatState(value);
   };
 
   const loadSources = useCallback(async () => {
@@ -131,6 +138,7 @@ export default function App() {
         onViewChange={setView}
         rangeLabel={rangeLabel}
         timeZone={timeZone}
+        clockFormat={clockFormat}
         onPrev={() => setWeekStart((d) => addDays(d, -RANGE_DAYS))}
         onNext={() => setWeekStart((d) => addDays(d, RANGE_DAYS))}
         onToday={() => setWeekStart(startOfWeek(new Date()))}
@@ -171,6 +179,8 @@ export default function App() {
           wakeLockEnabled={wakeLockEnabled}
           wakeLockState={wakeLockState}
           onWakeLockChange={toggleWakeLock}
+          clockFormat={clockFormat}
+          onClockFormatChange={toggleClockFormat}
           onClose={() => setSettingsOpen(false)}
           onChanged={async () => {
             await Promise.all([loadSources(), loadSettings()]);

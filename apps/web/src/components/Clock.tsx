@@ -1,21 +1,42 @@
 import { useEffect, useState } from 'react';
 
-interface ClockProps {
-  timeZone?: string;
+const STORAGE_KEY = 'family-display:clock-format';
+
+export type ClockFormat = '12' | '24';
+
+export function getClockFormat(): ClockFormat {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === '12' ? '12' : '24';
+  } catch {
+    return '24';
+  }
 }
 
-export function Clock({ timeZone }: ClockProps) {
+export function setClockFormat(format: ClockFormat): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, format);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+interface ClockProps {
+  timeZone?: string;
+  format: ClockFormat;
+}
+
+export function Clock({ timeZone, format }: ClockProps) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
     return () => window.clearInterval(id);
   }, []);
 
   const time = now.toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
+    hour12: format === '12',
     timeZone,
   });
   const date = now.toLocaleDateString(undefined, {

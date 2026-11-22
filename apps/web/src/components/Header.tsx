@@ -1,4 +1,4 @@
-import { Clock } from './Clock';
+import { Clock, type ClockFormat } from './Clock';
 
 interface HeaderProps {
   tab: 'calendar' | 'weather';
@@ -7,6 +7,7 @@ interface HeaderProps {
   onViewChange: (view: 'week' | 'agenda') => void;
   rangeLabel: string;
   timeZone?: string;
+  clockFormat: ClockFormat;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -18,11 +19,6 @@ interface HeaderProps {
 export function Header(props: HeaderProps) {
   return (
     <header className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-900/80 px-3 py-2 backdrop-blur sm:px-4 sm:py-3">
-      <div className="flex items-center gap-2">
-        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-sky-400 to-indigo-500" />
-        <h1 className="text-base font-semibold sm:text-lg">Family Display</h1>
-      </div>
-
       <div className="flex rounded-lg border border-slate-800 p-0.5">
         <button
           onClick={() => props.onTabChange('calendar')}
@@ -117,7 +113,7 @@ export function Header(props: HeaderProps) {
         </button>
 
         <div className="flex items-center gap-2">
-          <Clock timeZone={props.timeZone} />
+          <Clock timeZone={props.timeZone} format={props.clockFormat} />
         </div>
       </div>
     </header>

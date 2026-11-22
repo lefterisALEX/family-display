@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Source, WeatherConfig } from '../types';
+import type { ClockFormat } from './Clock';
 import { api } from '../api';
 
 interface SettingsModalProps {
@@ -9,6 +10,8 @@ interface SettingsModalProps {
   wakeLockEnabled: boolean;
   wakeLockState: 'active' | 'released' | 'failed' | 'unsupported' | 'off';
   onWakeLockChange: (enabled: boolean) => void;
+  clockFormat: ClockFormat;
+  onClockFormatChange: (format: ClockFormat) => void;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }
@@ -353,6 +356,38 @@ function WakeLockSettings({
   );
 }
 
+function ClockFormatSettings({
+  format,
+  onChange,
+}: {
+  format: ClockFormat;
+  onChange: (format: ClockFormat) => void;
+}) {
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <h3 className="mb-2 text-sm font-semibold text-slate-200">Clock format</h3>
+      <div className="flex w-fit rounded-lg border border-slate-800 p-0.5">
+        <button
+          onClick={() => onChange('24')}
+          className={`rounded-md px-3 py-1.5 text-xs ${
+            format === '24' ? 'bg-slate-700 text-slate-100' : 'text-slate-400'
+          }`}
+        >
+          24h
+        </button>
+        <button
+          onClick={() => onChange('12')}
+          className={`rounded-md px-3 py-1.5 text-xs ${
+            format === '12' ? 'bg-slate-700 text-slate-100' : 'text-slate-400'
+          }`}
+        >
+          12h
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsModal({
   sources,
   timeZone,
@@ -360,6 +395,8 @@ export function SettingsModal({
   wakeLockEnabled,
   wakeLockState,
   onWakeLockChange,
+  clockFormat,
+  onClockFormatChange,
   onClose,
   onChanged,
 }: SettingsModalProps) {
@@ -452,6 +489,10 @@ export function SettingsModal({
         </div>
 
         <TimezonePicker timeZone={timeZone} onChanged={onChanged} />
+        <ClockFormatSettings
+          format={clockFormat}
+          onChange={onClockFormatChange}
+        />
         <WeatherSettings weather={weather} onChanged={onChanged} />
         <WakeLockSettings
           enabled={wakeLockEnabled}
