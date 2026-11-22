@@ -108,7 +108,7 @@ export function Header(props: HeaderProps) {
           Settings
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <CurrentConditions />
           <Clock timeZone={props.timeZone} format={props.clockFormat} />
         </div>
