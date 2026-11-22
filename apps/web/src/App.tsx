@@ -3,7 +3,6 @@ import { api } from './api';
 import type { CalendarEvent, Source, WeatherConfig } from './types';
 import { addDays, startOfWeek } from './date';
 import { Header } from './components/Header';
-import { Legend } from './components/Legend';
 import { WeekView } from './components/WeekView';
 import { AgendaView } from './components/AgendaView';
 import { WeatherView } from './components/WeatherView';
@@ -39,7 +38,6 @@ export default function App() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [view, setView] = useState<'week' | 'agenda'>('week');
   const [tab, setTab] = useState<'calendar' | 'weather'>('calendar');
-  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeZone, setTimeZone] = useState<string | undefined>(undefined);
   const [weather, setWeather] = useState<WeatherConfig | undefined>(undefined);
@@ -99,17 +97,6 @@ export default function App() {
   const loadSources = useCallback(async () => {
     const next = await api.getSources();
     setSources(next);
-    setVisibleIds((prev) => {
-      const valid = new Set(next.map((s) => s.id));
-      const result = new Set<string>();
-      for (const id of prev) {
-        if (valid.has(id)) result.add(id);
-      }
-      for (const source of next) {
-        if (source.enabled && !result.has(source.id)) result.add(source.id);
-      }
-      return result;
-    });
   }, []);
 
   const loadSettings = useCallback(async () => {
@@ -153,20 +140,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const visibleEvents = useMemo(
-    () => events.filter((event) => visibleIds.has(event.sourceId)),
-    [events, visibleIds],
-  );
-
-  const toggleSource = (id: string) => {
-    setVisibleIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const handleSync = async () => {
     setSyncing(true);
     setError(null);
@@ -197,10 +170,6 @@ export default function App() {
         onSettings={() => setSettingsOpen(true)}
       />
 
-      {tab === 'calendar' && (
-        <Legend sources={sources} visibleIds={visibleIds} onToggle={toggleSource} />
-      )}
-
       <main className="flex-1 overflow-hidden p-2 sm:p-3">
         {error && (
           <div className="mb-2 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
@@ -215,9 +184,9 @@ export default function App() {
             Loading…
           </div>
         ) : view === 'week' ? (
-          <WeekView weekStart={weekStart} events={visibleEvents} timeZone={timeZone} />
+          <WeekView weekStart={weekStart} events={events} timeZone={timeZone} />
         ) : (
-          <AgendaView weekStart={weekStart} events={visibleEvents} timeZone={timeZone} />
+          <AgendaView weekStart={weekStart} events={events} timeZone={timeZone} />
         )}
       </main>
 
