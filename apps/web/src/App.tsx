@@ -131,7 +131,6 @@ export default function App() {
         onViewChange={setView}
         rangeLabel={rangeLabel}
         timeZone={timeZone}
-        wakeLockState={wakeLockState}
         onPrev={() => setWeekStart((d) => addDays(d, -RANGE_DAYS))}
         onNext={() => setWeekStart((d) => addDays(d, RANGE_DAYS))}
         onToday={() => setWeekStart(startOfWeek(new Date()))}

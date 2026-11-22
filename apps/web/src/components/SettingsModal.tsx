@@ -330,7 +330,7 @@ function WakeLockSettings({
         <h3 className="text-sm font-semibold text-slate-200">Wake lock</h3>
         <button
           onClick={() => onChange(!enabled)}
-          className={`relative h-6 w-11 rounded-full transition-colors ${
+          className={`relative h-6 w-12 shrink-0 rounded-full transition-colors ${
             enabled ? 'bg-sky-500' : 'bg-slate-700'
           }`}
           role="switch"
@@ -338,15 +338,16 @@ function WakeLockSettings({
           aria-label="Toggle wake lock"
         >
           <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-              enabled ? 'translate-x-5' : 'translate-x-0.5'
+            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              enabled ? 'translate-x-6' : 'translate-x-0'
             }`}
           />
         </button>
       </div>
       <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
         {statusText[state]}. Keeps the screen on while this tab is open so the
-        display never sleeps. Requires a secure connection (HTTPS or localhost).
+        display never sleeps. The browser only allows this over HTTPS (or
+        localhost) — your Tailscale URL is fine.
       </p>
     </div>
   );
