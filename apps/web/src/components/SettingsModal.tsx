@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Source, WeatherConfig } from '../types';
+import type { ClockFormat } from './Clock';
+import type { FontScale } from '../App';
 import { api } from '../api';
 
 interface SettingsModalProps {
   sources: Source[];
   timeZone?: string;
   weather?: WeatherConfig;
+  wakeLockEnabled: boolean;
+  wakeLockState: 'active' | 'released' | 'failed' | 'unsupported' | 'off';
+  onWakeLockChange: (enabled: boolean) => void;
+  clockFormat: ClockFormat;
+  onClockFormatChange: (format: ClockFormat) => void;
+  autoReturn: boolean;
+  onAutoReturnChange: (enabled: boolean) => void;
+  autoReturnToday: boolean;
+  onAutoReturnTodayChange: (enabled: boolean) => void;
+  fontScale: FontScale;
+  onFontScaleChange: (scale: FontScale) => void;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }
@@ -204,6 +217,26 @@ function TimezonePicker({
   );
 }
 
+interface GeoResult {
+  name: string;
+  latitude: number;
+  longitude: number;
+  country?: string;
+  admin1?: string;
+}
+
+function searchCities(query: string): Promise<GeoResult[]> {
+  const params = new URLSearchParams({
+    name: query,
+    count: '6',
+    language: 'en',
+    format: 'json',
+  });
+  return fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`)
+    .then((r) => r.json())
+    .then((data: { results?: GeoResult[] }) => data.results ?? []);
+}
+
 function WeatherSettings({
   weather,
   onChanged,
@@ -213,16 +246,49 @@ function WeatherSettings({
 }) {
   const [latitude, setLatitude] = useState(weather?.latitude?.toString() ?? '');
   const [longitude, setLongitude] = useState(weather?.longitude?.toString() ?? '');
+  const [location, setLocation] = useState(weather?.location ?? '');
   const [units, setUnits] = useState<'c' | 'f'>(weather?.units ?? 'c');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<GeoResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
 
   useEffect(() => {
     setLatitude(weather?.latitude?.toString() ?? '');
     setLongitude(weather?.longitude?.toString() ?? '');
+    setLocation(weather?.location ?? '');
     setUnits(weather?.units ?? 'c');
   }, [weather]);
+
+  async function doSearch() {
+    const q = query.trim();
+    if (!q) return;
+    setSearching(true);
+    setSearched(false);
+    setResults([]);
+    try {
+      const found = await searchCities(q);
+      setResults(found);
+      setSearched(true);
+    } catch {
+      setResults([]);
+      setSearched(true);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function pickCity(city: GeoResult) {
+    setLatitude(city.latitude.toFixed(4));
+    setLongitude(city.longitude.toFixed(4));
+    setLocation(city.name);
+    setQuery(city.name);
+    setResults([]);
+    setSearched(false);
+  }
 
   async function save() {
     setBusy(true);
@@ -233,6 +299,7 @@ function WeatherSettings({
         weather: {
           latitude: latitude.trim() ? Number(latitude.trim()) : undefined,
           longitude: longitude.trim() ? Number(longitude.trim()) : undefined,
+          location: location.trim() || undefined,
           units,
         },
       });
@@ -252,7 +319,53 @@ function WeatherSettings({
         <h3 className="text-sm font-semibold text-slate-200">Weather</h3>
         {saved && <span className="text-xs text-emerald-400">Saved</span>}
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="flex gap-2">
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSearched(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void doSearch();
+            }
+          }}
+          placeholder="Search for a city…"
+          className="min-w-0 flex-1 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+        />
+        <button
+          onClick={doSearch}
+          disabled={searching || !query.trim()}
+          className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+        >
+          {searching ? '…' : 'Search'}
+        </button>
+      </div>
+      {results.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {results.map((city) => (
+            <li key={`${city.name}-${city.latitude}-${city.longitude}`}>
+              <button
+                onClick={() => pickCity(city)}
+                className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
+              >
+                {city.name}
+                {[city.admin1, city.country].filter(Boolean).length > 0 && (
+                  <span className="ml-1 text-xs text-slate-500">
+                    {[city.admin1, city.country].filter(Boolean).join(', ')}
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {searched && results.length === 0 && (
+        <div className="mt-2 text-xs text-slate-500">No cities found.</div>
+      )}
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input
           value={latitude}
           onChange={(e) => setLatitude(e.target.value)}
@@ -297,9 +410,163 @@ function WeatherSettings({
         {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
       <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-        Enter the latitude and longitude of the home location. Forecast updates
-        every ~15 minutes via Open-Meteo (no API key needed).
+        Search for a city to auto-fill the coordinates, or enter latitude and
+        longitude manually. The location name is shown on the weather tab.
+        Forecast updates every ~15 minutes via Open-Meteo (no API key needed).
       </p>
+    </div>
+  );
+}
+
+function WakeLockSettings({
+  enabled,
+  state,
+  onChange,
+}: {
+  enabled: boolean;
+  state: SettingsModalProps['wakeLockState'];
+  onChange: (enabled: boolean) => void;
+}) {
+  const statusText: Record<SettingsModalProps['wakeLockState'], string> = {
+    active: 'Screen is being kept awake',
+    released: 'Not holding the screen',
+    failed: 'Wake lock failed (browser refused)',
+    unsupported: 'Wake lock not supported by this browser',
+    off: 'Wake lock disabled',
+  };
+
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-200">Wake lock</h3>
+        <button
+          onClick={() => onChange(!enabled)}
+          className={`relative h-6 w-12 shrink-0 rounded-full transition-colors ${
+            enabled ? 'bg-sky-500' : 'bg-slate-700'
+          }`}
+          role="switch"
+          aria-checked={enabled}
+          aria-label="Toggle wake lock"
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              enabled ? 'translate-x-6' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+        {statusText[state]}. Keeps the screen on while this tab is open so the
+        display never sleeps. The browser only allows this over HTTPS (or
+        localhost) — your Tailscale URL is fine.
+      </p>
+    </div>
+  );
+}
+
+function ToggleRow({
+  title,
+  description,
+  enabled,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
+          <p className="mt-0.5 text-[11px] text-slate-500">{description}</p>
+        </div>
+        <button
+          onClick={() => onChange(!enabled)}
+          className={`relative h-6 w-12 shrink-0 rounded-full transition-colors ${
+            enabled ? 'bg-sky-500' : 'bg-slate-700'
+          }`}
+          role="switch"
+          aria-checked={enabled}
+          aria-label={`Toggle ${title}`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              enabled ? 'translate-x-6' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FontScaleSettings({
+  scale,
+  onChange,
+}: {
+  scale: FontScale;
+  onChange: (scale: FontScale) => void;
+}) {
+  const options: { value: FontScale; label: string }[] = [
+    { value: '90', label: 'Small' },
+    { value: '100', label: 'Default' },
+    { value: '110', label: 'Large' },
+    { value: '125', label: 'XL' },
+    { value: '150', label: 'XXL' },
+  ];
+
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <h3 className="mb-2 text-sm font-semibold text-slate-200">Font size</h3>
+      <div className="flex w-fit rounded-lg border border-slate-800 p-0.5">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={`rounded-md px-2.5 py-1.5 text-xs ${
+              scale === option.value
+                ? 'bg-slate-700 text-slate-100'
+                : 'text-slate-400'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ClockFormatSettings({
+  format,
+  onChange,
+}: {
+  format: ClockFormat;
+  onChange: (format: ClockFormat) => void;
+}) {
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <h3 className="mb-2 text-sm font-semibold text-slate-200">Clock format</h3>
+      <div className="flex w-fit rounded-lg border border-slate-800 p-0.5">
+        <button
+          onClick={() => onChange('24')}
+          className={`rounded-md px-3 py-1.5 text-xs ${
+            format === '24' ? 'bg-slate-700 text-slate-100' : 'text-slate-400'
+          }`}
+        >
+          24h
+        </button>
+        <button
+          onClick={() => onChange('12')}
+          className={`rounded-md px-3 py-1.5 text-xs ${
+            format === '12' ? 'bg-slate-700 text-slate-100' : 'text-slate-400'
+          }`}
+        >
+          12h
+        </button>
+      </div>
     </div>
   );
 }
@@ -308,6 +575,17 @@ export function SettingsModal({
   sources,
   timeZone,
   weather,
+  wakeLockEnabled,
+  wakeLockState,
+  onWakeLockChange,
+  clockFormat,
+  onClockFormatChange,
+  autoReturn,
+  onAutoReturnChange,
+  autoReturnToday,
+  onAutoReturnTodayChange,
+  fontScale,
+  onFontScaleChange,
   onClose,
   onChanged,
 }: SettingsModalProps) {
@@ -400,7 +678,29 @@ export function SettingsModal({
         </div>
 
         <TimezonePicker timeZone={timeZone} onChanged={onChanged} />
+        <ClockFormatSettings
+          format={clockFormat}
+          onChange={onClockFormatChange}
+        />
+        <FontScaleSettings scale={fontScale} onChange={onFontScaleChange} />
+        <ToggleRow
+          title="Auto-return to calendar"
+          description="Switches back from the Weather tab to Calendar after 5 minutes."
+          enabled={autoReturn}
+          onChange={onAutoReturnChange}
+        />
+        <ToggleRow
+          title="Auto-return to current week"
+          description="Returns to this week after 5 minutes if you browsed other weeks."
+          enabled={autoReturnToday}
+          onChange={onAutoReturnTodayChange}
+        />
         <WeatherSettings weather={weather} onChanged={onChanged} />
+        <WakeLockSettings
+          enabled={wakeLockEnabled}
+          state={wakeLockState}
+          onChange={onWakeLockChange}
+        />
       </div>
     </div>
   );

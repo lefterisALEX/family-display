@@ -35,6 +35,7 @@ export interface WeatherConfig {
   latitude: number | null;
   longitude: number | null;
   units: WeatherUnits;
+  location?: string | null;
 }
 
 export interface WeatherDay {
@@ -48,6 +49,7 @@ export interface WeatherDay {
 export interface WeatherResponse {
   configured: boolean;
   location?: { latitude: number; longitude: number };
+  locationName?: string | null;
   units: WeatherUnits;
   current?: {
     temp: number;

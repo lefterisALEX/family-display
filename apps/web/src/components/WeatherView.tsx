@@ -109,9 +109,20 @@ export function WeatherView({ weather, timeZone }: WeatherViewProps) {
   const unit = data.units === 'f' ? '°F' : '°C';
   const current = data.current;
   const daily = data.daily ?? [];
+  const locationName =
+    data.locationName ??
+    (data.location
+      ? `${data.location.latitude.toFixed(2)}, ${data.location.longitude.toFixed(2)}`
+      : null);
 
   return (
     <div className="flex h-full flex-col gap-4 p-2 sm:p-4">
+      {locationName && (
+        <div className="text-center text-sm font-medium text-slate-300">
+          {locationName}
+        </div>
+      )}
+
       {current && (
         <div className="flex items-center justify-center gap-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
           <div className="text-7xl">{iconFor(current.code)}</div>
