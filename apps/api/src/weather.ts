@@ -7,6 +7,7 @@ export interface WeatherConfig {
   latitude: number | null;
   longitude: number | null;
   units: WeatherUnits;
+  location?: string | null;
 }
 
 export interface WeatherDay {
@@ -20,6 +21,7 @@ export interface WeatherDay {
 export interface WeatherResponse {
   configured: boolean;
   location?: { latitude: number; longitude: number };
+  locationName?: string | null;
   units: WeatherUnits;
   current?: {
     temp: number;
@@ -47,6 +49,7 @@ export function getWeatherConfig(): WeatherConfig {
     latitude: parseCoord(getSetting('weather.latitude')),
     longitude: parseCoord(getSetting('weather.longitude')),
     units: getSetting('weather.units') === 'f' ? 'f' : 'c',
+    location: getSetting('weather.location') || null,
   };
 }
 
@@ -122,6 +125,7 @@ export async function fetchWeather(): Promise<WeatherResponse> {
     const payload: WeatherResponse = {
       configured: true,
       location: { latitude: config.latitude, longitude: config.longitude },
+      locationName: config.location,
       units: config.units,
       current: data.current
         ? {
@@ -147,6 +151,7 @@ export async function fetchWeather(): Promise<WeatherResponse> {
     return {
       configured: true,
       location: { latitude: config.latitude, longitude: config.longitude },
+      locationName: config.location,
       units: config.units,
       fetchedAt: new Date().toISOString(),
       error: message,

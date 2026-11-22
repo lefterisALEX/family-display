@@ -96,6 +96,7 @@ app.put('/api/settings', async (req) => {
       latitude: z.union([z.number(), z.string()]).optional(),
       longitude: z.union([z.number(), z.string()]).optional(),
       units: weatherUnitsSchema.optional(),
+      location: z.string().trim().max(100).optional(),
     }).optional(),
   }).parse(req.body);
 
@@ -110,6 +111,7 @@ app.put('/api/settings', async (req) => {
     if (body.weather.latitude !== undefined) setSetting('weather.latitude', String(body.weather.latitude));
     if (body.weather.longitude !== undefined) setSetting('weather.longitude', String(body.weather.longitude));
     if (body.weather.units !== undefined) setSetting('weather.units', body.weather.units);
+    if (body.weather.location !== undefined) setSetting('weather.location', body.weather.location);
     invalidateWeatherCache();
   }
 

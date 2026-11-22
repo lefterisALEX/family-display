@@ -219,6 +219,7 @@ function WeatherSettings({
 }) {
   const [latitude, setLatitude] = useState(weather?.latitude?.toString() ?? '');
   const [longitude, setLongitude] = useState(weather?.longitude?.toString() ?? '');
+  const [location, setLocation] = useState(weather?.location ?? '');
   const [units, setUnits] = useState<'c' | 'f'>(weather?.units ?? 'c');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -227,6 +228,7 @@ function WeatherSettings({
   useEffect(() => {
     setLatitude(weather?.latitude?.toString() ?? '');
     setLongitude(weather?.longitude?.toString() ?? '');
+    setLocation(weather?.location ?? '');
     setUnits(weather?.units ?? 'c');
   }, [weather]);
 
@@ -239,6 +241,7 @@ function WeatherSettings({
         weather: {
           latitude: latitude.trim() ? Number(latitude.trim()) : undefined,
           longitude: longitude.trim() ? Number(longitude.trim()) : undefined,
+          location: location.trim() || undefined,
           units,
         },
       });
@@ -274,6 +277,12 @@ function WeatherSettings({
           className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
         />
       </div>
+      <input
+        value={location}
+        onChange={(e) => setLocation(e.target.value)}
+        placeholder="Location name (e.g. Amsterdam)"
+        className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+      />
       <div className="mt-2 flex items-center gap-3">
         <div className="flex rounded-lg border border-slate-800 p-0.5">
           <button
