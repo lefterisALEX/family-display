@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Source, WeatherConfig } from '../types';
+import type { Source, WeatherConfig, HaEntityConfig, HaEntityRef } from '../types';
 import type { ClockFormat } from './Clock';
 import type { FontScale } from '../App';
 import { api } from '../api';
@@ -502,6 +502,222 @@ function ToggleRow({
   );
 }
 
+function EntityPicker({
+  label,
+  type,
+  entities,
+  onChange,
+}: {
+  label: string;
+  type: 'temperatures' | 'lights' | 'scenes';
+  entities: HaEntityRef[];
+  onChange: (list: HaEntityRef[]) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<HaEntityRef[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function search() {
+    if (!query.trim()) return;
+    setBusy(true);
+    setSearched(false);
+    try {
+      const found = await api.listHaEntities(type, query.trim());
+      setResults(found);
+      setSearched(true);
+    } catch (err) {
+      setResults([]);
+      setSearched(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function add(ref: HaEntityRef) {
+    if (entities.some((e) => e.id === ref.id)) return;
+    onChange([...entities, ref]);
+  }
+
+  function remove(id: string) {
+    onChange(entities.filter((e) => e.id !== id));
+  }
+
+  const remaining = results.filter((r) => !entities.some((e) => e.id === r.id));
+
+  return (
+    <div className="mt-3">
+      <div className="mb-1 text-xs font-medium text-slate-300">{label}</div>
+      <div className="space-y-1">
+        {entities.map((e) => (
+          <div
+            key={e.id}
+            className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5"
+          >
+            <div className="truncate">
+              <span className="text-xs text-slate-200">{e.name}</span>
+              <span className="ml-2 font-mono text-[10px] text-slate-500">{e.id}</span>
+            </div>
+            <button
+              onClick={() => remove(e.id)}
+              className="shrink-0 text-xs text-red-400 hover:text-red-300"
+              aria-label={`Remove ${e.name}`}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        {entities.length === 0 && (
+          <div className="rounded-lg border border-dashed border-slate-800 px-3 py-2 text-[11px] text-slate-600">
+            None added yet.
+          </div>
+        )}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSearched(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void search();
+            }
+          }}
+          placeholder={`Search ${type}…`}
+          className="min-w-0 flex-1 rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-500"
+        />
+        <button
+          onClick={search}
+          disabled={busy || !query.trim()}
+          className="shrink-0 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+        >
+          {busy ? '…' : 'Search'}
+        </button>
+      </div>
+      {remaining.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {remaining.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => add(r)}
+              className="flex w-full items-center justify-between gap-2 rounded border border-slate-800 px-3 py-1 text-left text-xs text-slate-400 hover:bg-slate-800"
+            >
+              <span className="truncate">{r.name}</span>
+              <span className="ml-2 font-mono text-[10px] text-slate-500">{r.id}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {searched && remaining.length === 0 && results.length > 0 && (
+        <div className="mt-1 text-[11px] text-slate-600">All results already added.</div>
+      )}
+      {searched && results.length === 0 && (
+        <div className="mt-1 text-[11px] text-slate-600">No entities found.</div>
+      )}
+    </div>
+  );
+}
+
+function HaSettings() {
+  const [url, setUrl] = useState('');
+  const [token, setToken] = useState('');
+  const [hasToken, setHasToken] = useState(false);
+  const [config, setConfig] = useState<HaEntityConfig>({
+    temperatures: [],
+    lights: [],
+    scenes: [],
+  });
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .getHaConfig()
+      .then((c) => {
+        setUrl(c.url);
+        setHasToken(c.hasToken);
+        setConfig(c.entities);
+      })
+      .catch(() => {});
+  }, []);
+
+  const setList = (key: keyof HaEntityConfig) => (list: HaEntityRef[]) =>
+    setConfig((prev) => ({ ...prev, [key]: list }));
+
+  async function save() {
+    setBusy(true);
+    setSaved(false);
+    setError(null);
+    try {
+      await api.updateHaConfig({
+        url,
+        token: token || undefined,
+        entities: config,
+      });
+      setHasToken(true);
+      setToken('');
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-200">Home Assistant</h3>
+        {saved && <span className="text-xs text-emerald-400">Saved</span>}
+      </div>
+      <input
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="http://homeassistant.local:8123"
+        className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+      />
+      <input
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
+        placeholder={hasToken ? 'Long-lived token (keep to leave unchanged)' : 'Long-lived access token'}
+        type="password"
+        className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+      />
+      <button
+        onClick={save}
+        disabled={busy}
+        className="mt-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-sky-400 disabled:opacity-50"
+      >
+        {busy ? 'Saving…' : 'Save Home Assistant'}
+      </button>
+      {error && <div className="mt-2 text-xs text-red-400">{error}</div>}
+      <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+        Create a long-lived access token in Home Assistant (Profile → Security →
+        Long-lived access tokens). The token stays on the server.
+      </p>
+
+      <EntityPicker
+        label="Temperatures"
+        type="temperatures"
+        entities={config.temperatures}
+        onChange={setList('temperatures')}
+      />
+      <EntityPicker
+        label="Lights"
+        type="lights"
+        entities={config.lights}
+        onChange={setList('lights')}
+      />
+      <EntityPicker label="Scenes" type="scenes" entities={config.scenes} onChange={setList('scenes')} />
+    </div>
+  );
+}
+
 function FontScaleSettings({
   scale,
   onChange,
@@ -695,6 +911,7 @@ export function SettingsModal({
           enabled={autoReturnToday}
           onChange={onAutoReturnTodayChange}
         />
+        <HaSettings />
         <WeatherSettings weather={weather} onChanged={onChanged} />
         <WakeLockSettings
           enabled={wakeLockEnabled}

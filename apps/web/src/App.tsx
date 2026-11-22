@@ -6,6 +6,7 @@ import { Header } from './components/Header';
 import { WeekView } from './components/WeekView';
 import { AgendaView } from './components/AgendaView';
 import { WeatherView } from './components/WeatherView';
+import { HomeView } from './components/HomeView';
 import { SettingsModal } from './components/SettingsModal';
 import { useWakeLock, getWakeLockEnabled, setWakeLockEnabled as persistWakeLock } from './useWakeLock';
 import { getClockFormat, setClockFormat as persistClockFormat } from './components/Clock';
@@ -51,7 +52,7 @@ export default function App() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [view, setView] = useState<'week' | 'agenda'>('week');
-  const [tab, setTab] = useState<'calendar' | 'weather'>('calendar');
+  const [tab, setTab] = useState<'calendar' | 'weather' | 'home'>('calendar');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeZone, setTimeZone] = useState<string | undefined>(undefined);
   const [weather, setWeather] = useState<WeatherConfig | undefined>(undefined);
@@ -103,7 +104,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!autoReturn || tab !== 'weather') return;
+    if (!autoReturn || (tab !== 'weather' && tab !== 'home')) return;
     const id = window.setTimeout(() => setTab('calendar'), AUTO_RETURN_MS);
     return () => window.clearTimeout(id);
   }, [autoReturn, tab]);
@@ -203,6 +204,8 @@ export default function App() {
 
         {tab === 'weather' ? (
           <WeatherView weather={weather} timeZone={timeZone} />
+        ) : tab === 'home' ? (
+          <HomeView />
         ) : loading ? (
           <div className="flex h-full items-center justify-center text-slate-500">
             Loading…

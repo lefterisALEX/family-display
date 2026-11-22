@@ -1,5 +1,8 @@
 import type {
   CalendarEvent,
+  HaEntityConfig,
+  HaEntityRef,
+  HaState,
   Source,
   WeatherConfig,
   WeatherResponse,
@@ -80,4 +83,40 @@ export const api = {
 
   getWeather: () =>
     fetch(`${BASE}/weather`).then((r) => json<WeatherResponse>(r)),
+
+  getHaConfig: () =>
+    fetch(`${BASE}/ha/config`).then((r) =>
+      json<{ url: string; configured: boolean; hasToken: boolean; entities: HaEntityConfig }>(r),
+    ),
+
+  updateHaConfig: (body: {
+    url?: string;
+    token?: string;
+    entities?: Partial<HaEntityConfig>;
+  }) =>
+    fetch(`${BASE}/ha/config`, {
+      method: 'PUT',
+      headers: jsonHeaders(),
+      body: JSON.stringify(body),
+    }).then((r) =>
+      json<{ url: string; configured: boolean; hasToken: boolean; entities: HaEntityConfig }>(r),
+    ),
+
+  resetHaToken: () =>
+    fetch(`${BASE}/ha/config/reset`, { method: 'POST' }).then((r) => json<{ ok: boolean }>(r)),
+
+  listHaEntities: (type: string, search: string) => {
+    const params = new URLSearchParams({ type, search });
+    return fetch(`${BASE}/ha/entities?${params}`).then((r) => json<HaEntityRef[]>(r));
+  },
+
+  getHaStates: () =>
+    fetch(`${BASE}/ha/states`).then((r) => json<Record<string, HaState>>(r)),
+
+  callHaService: (domain: string, service: string, entityId: string) =>
+    fetch(`${BASE}/ha/call`, {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ domain, service, entityId }),
+    }).then((r) => json<unknown>(r)),
 };
