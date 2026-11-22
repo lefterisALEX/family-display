@@ -1,4 +1,5 @@
 import { Clock, type ClockFormat } from './Clock';
+import { CurrentConditions } from './CurrentConditions';
 
 interface HeaderProps {
   tab: 'calendar' | 'weather';
@@ -108,6 +109,7 @@ export function Header(props: HeaderProps) {
         </button>
 
         <div className="flex items-center gap-2">
+          <CurrentConditions />
           <Clock timeZone={props.timeZone} format={props.clockFormat} />
         </div>
       </div>
