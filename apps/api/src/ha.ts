@@ -62,15 +62,23 @@ async function haFetch(path: string, init?: RequestInit): Promise<Response> {
   if (!url || !token) {
     throw new Error('Home Assistant is not configured');
   }
-  const res = await fetch(`${url.replace(/\/$/, '')}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    signal: AbortSignal.timeout(15_000),
-  });
+  const target = `${url.replace(/\/$/, '')}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(target, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (err) {
+    throw new Error(
+      `Cannot reach Home Assistant at ${url}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`Home Assistant HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ''}`);
