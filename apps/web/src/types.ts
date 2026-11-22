@@ -62,3 +62,20 @@ export interface WeatherResponse {
   fetchedAt: string;
   error?: string;
 }
+
+export interface HaEntityRef {
+  id: string;
+  name: string;
+}
+
+export interface HaEntityConfig {
+  temperatures: HaEntityRef[];
+  lights: HaEntityRef[];
+  scenes: HaEntityRef[];
+}
+
+export interface HaState {
+  state: string;
+  unit?: string;
+  name: string;
+}

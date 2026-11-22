@@ -12,6 +12,14 @@ import { pickColor } from './colors.js';
 import { toDateString } from './dates.js';
 import { getTimezone, isValidTimezone } from './timezone.js';
 import { fetchWeather, getWeatherConfig, invalidateWeatherCache } from './weather.js';
+import {
+  getHaConfig,
+  saveHaConfig,
+  clearHaToken,
+  listHaEntities,
+  getHaStates,
+  callHaService,
+} from './ha.js';
 import type {
   CalendarEvent,
   EventRow,
@@ -21,6 +29,14 @@ import type {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = Fastify({ logger: true });
+
+app.setErrorHandler((error, req, reply) => {
+  const status =
+    typeof (error as any)?.statusCode === 'number' && (error as any).statusCode < 500
+      ? (error as any).statusCode
+      : (error instanceof SyntaxError ? 400 : 400);
+  return reply.code(status).send({ error: (error as Error).message ?? 'Internal server error' });
+});
 
 await app.register(cors, { origin: true });
 
@@ -122,6 +138,71 @@ app.put('/api/settings', async (req) => {
 });
 
 app.get('/api/weather', async () => fetchWeather());
+
+const haEntityRefSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+});
+
+app.get('/api/ha/config', async () => {
+  const { url, configured, entities } = getHaConfig();
+  return { url, configured, entities, hasToken: configured };
+});
+
+app.put('/api/ha/config', async (req) => {
+  const body = z.object({
+    url: z.string().trim().min(1).optional(),
+    token: z.string().optional(),
+    entities: z.object({
+      temperatures: z.array(haEntityRefSchema).optional(),
+      lights: z.array(haEntityRefSchema).optional(),
+      scenes: z.array(haEntityRefSchema).optional(),
+    }).optional(),
+  }).parse(req.body);
+
+  const result = saveHaConfig({
+    url: body.url,
+    token: body.token,
+    entities: body.entities
+      ? {
+          temperatures: body.entities.temperatures ?? [],
+          lights: body.entities.lights ?? [],
+          scenes: body.entities.scenes ?? [],
+        }
+      : undefined,
+  });
+
+  return {
+    url: result.url,
+    configured: result.configured,
+    entities: result.entities,
+    hasToken: result.configured,
+  };
+});
+
+app.post('/api/ha/config/reset', async () => {
+  clearHaToken();
+  return { ok: true };
+});
+
+app.get('/api/ha/entities', async (req) => {
+  const q = z.object({
+    type: z.string().optional(),
+    search: z.string().optional(),
+  }).parse(req.query);
+  return listHaEntities(q.type ?? '', q.search ?? '');
+});
+
+app.get('/api/ha/states', async () => getHaStates());
+
+app.post('/api/ha/call', async (req) => {
+  const body = z.object({
+    domain: z.string().min(1),
+    service: z.string().min(1),
+    entityId: z.string().min(1),
+  }).parse(req.body);
+  return callHaService(body.domain, body.service, body.entityId);
+});
 
 app.get('/api/sources', async () => {
   const rows = db.prepare('SELECT * FROM sources ORDER BY created_at ASC').all() as SourceRow[];

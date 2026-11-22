@@ -2,8 +2,8 @@ import { Clock, type ClockFormat } from './Clock';
 import { CurrentConditions } from './CurrentConditions';
 
 interface HeaderProps {
-  tab: 'calendar' | 'weather';
-  onTabChange: (tab: 'calendar' | 'weather') => void;
+  tab: 'calendar' | 'weather' | 'home';
+  onTabChange: (tab: 'calendar' | 'weather' | 'home') => void;
   view: 'week' | 'agenda';
   onViewChange: (view: 'week' | 'agenda') => void;
   timeZone?: string;
@@ -39,6 +39,16 @@ export function Header(props: HeaderProps) {
           }`}
         >
           Weather
+        </button>
+        <button
+          onClick={() => props.onTabChange('home')}
+          className={`rounded-md px-3 py-1 text-xs ${
+            props.tab === 'home'
+              ? 'bg-slate-700 text-slate-100'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Home
         </button>
       </div>
 
