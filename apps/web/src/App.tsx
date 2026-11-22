@@ -13,6 +13,17 @@ import { getClockFormat, setClockFormat as persistClockFormat } from './componen
 
 const RANGE_DAYS = 14;
 
+const AUTO_RETURN_MS = 5 * 60 * 1000;
+const AUTO_RETURN_KEY = 'family-display:auto-return';
+
+function getAutoReturn(): boolean {
+  try {
+    return localStorage.getItem(AUTO_RETURN_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
 export default function App() {
   const [sources, setSources] = useState<Source[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -29,6 +40,7 @@ export default function App() {
   const [wakeLockEnabled, setWakeLockEnabledState] = useState(getWakeLockEnabled);
   const wakeLockState = useWakeLock(wakeLockEnabled);
   const [clockFormat, setClockFormatState] = useState(getClockFormat);
+  const [autoReturn, setAutoReturnState] = useState(getAutoReturn);
 
   const toggleWakeLock = (value: boolean) => {
     persistWakeLock(value);
@@ -39,6 +51,21 @@ export default function App() {
     persistClockFormat(value);
     setClockFormatState(value);
   };
+
+  const toggleAutoReturn = (value: boolean) => {
+    try {
+      localStorage.setItem(AUTO_RETURN_KEY, value ? '1' : '0');
+    } catch {
+      // ignore storage failures
+    }
+    setAutoReturnState(value);
+  };
+
+  useEffect(() => {
+    if (!autoReturn || tab !== 'weather') return;
+    const id = window.setTimeout(() => setTab('calendar'), AUTO_RETURN_MS);
+    return () => window.clearTimeout(id);
+  }, [autoReturn, tab]);
 
   const loadSources = useCallback(async () => {
     const next = await api.getSources();
@@ -181,6 +208,8 @@ export default function App() {
           onWakeLockChange={toggleWakeLock}
           clockFormat={clockFormat}
           onClockFormatChange={toggleClockFormat}
+          autoReturn={autoReturn}
+          onAutoReturnChange={toggleAutoReturn}
           onClose={() => setSettingsOpen(false)}
           onChanged={async () => {
             await Promise.all([loadSources(), loadSettings()]);

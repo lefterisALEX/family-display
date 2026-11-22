@@ -12,6 +12,8 @@ interface SettingsModalProps {
   onWakeLockChange: (enabled: boolean) => void;
   clockFormat: ClockFormat;
   onClockFormatChange: (format: ClockFormat) => void;
+  autoReturn: boolean;
+  onAutoReturnChange: (enabled: boolean) => void;
   onClose: () => void;
   onChanged: () => Promise<void>;
 }
@@ -457,6 +459,44 @@ function WakeLockSettings({
   );
 }
 
+function AutoReturnSettings({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <div className="mt-6 border-t border-slate-800 pt-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-200">
+            Auto-return to calendar
+          </h3>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            Switches back from the Weather tab to Calendar after 5 minutes.
+          </p>
+        </div>
+        <button
+          onClick={() => onChange(!enabled)}
+          className={`relative h-6 w-12 shrink-0 rounded-full transition-colors ${
+            enabled ? 'bg-sky-500' : 'bg-slate-700'
+          }`}
+          role="switch"
+          aria-checked={enabled}
+          aria-label="Toggle auto-return to calendar"
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              enabled ? 'translate-x-6' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ClockFormatSettings({
   format,
   onChange,
@@ -498,6 +538,8 @@ export function SettingsModal({
   onWakeLockChange,
   clockFormat,
   onClockFormatChange,
+  autoReturn,
+  onAutoReturnChange,
   onClose,
   onChanged,
 }: SettingsModalProps) {
@@ -593,6 +635,10 @@ export function SettingsModal({
         <ClockFormatSettings
           format={clockFormat}
           onChange={onClockFormatChange}
+        />
+        <AutoReturnSettings
+          enabled={autoReturn}
+          onChange={onAutoReturnChange}
         />
         <WeatherSettings weather={weather} onChanged={onChanged} />
         <WakeLockSettings
