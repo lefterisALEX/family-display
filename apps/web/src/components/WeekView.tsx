@@ -40,14 +40,24 @@ export function WeekView({ weekStart, events, timeZone }: WeekViewProps) {
               }`}
             >
               <div className="text-[10px] uppercase tracking-wide text-slate-400 sm:text-xs">
-                {day.toLocaleDateString(undefined, { weekday: 'short' })}
+                {day.toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  ...(timeZone ? { timeZone } : {}),
+                })}
               </div>
               <div
                 className={`text-base font-semibold sm:text-xl ${
                   isToday ? 'text-sky-400' : 'text-slate-100'
                 }`}
               >
-                {day.getDate()}
+                {timeZone
+                  ? Number(
+                      new Intl.DateTimeFormat(undefined, {
+                        timeZone,
+                        day: 'numeric',
+                      }).format(day),
+                    )
+                  : day.getDate()}
               </div>
             </div>
 
