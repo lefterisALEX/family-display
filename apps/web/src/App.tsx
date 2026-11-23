@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
 import type { CalendarEvent, Source, WeatherConfig } from './types';
-import { addDays, startOfWeek } from './date';
+import { addDays, startOfCurrentWeek, startOfWeek } from './date';
 import { Header } from './components/Header';
 import { WeekView } from './components/WeekView';
 import { AgendaView } from './components/AgendaView';
@@ -50,7 +50,8 @@ function getAutoReturnToday(): boolean {
 export default function App() {
   const [sources, setSources] = useState<Source[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [weekStart, setWeekStart] = useState(() => startOfCurrentWeek());
+  const [now, setNow] = useState(() => new Date());
   const [view, setView] = useState<'week' | 'agenda'>('week');
   const [tab, setTab] = useState<'calendar' | 'weather' | 'home'>('calendar');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -109,15 +110,34 @@ export default function App() {
     return () => window.clearTimeout(id);
   }, [autoReturn, tab]);
 
-  const thisWeekStart = useMemo(() => startOfWeek(new Date()), []);
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const currentWeekStart = useMemo(
+    () => startOfCurrentWeek(timeZone),
+    [timeZone, now],
+  );
+
+  const previousCurrentWeek = useRef(currentWeekStart.getTime());
+
+  useEffect(() => {
+    if (currentWeekStart.getTime() === previousCurrentWeek.current) return;
+    previousCurrentWeek.current = currentWeekStart.getTime();
+    setWeekStart(currentWeekStart);
+  }, [currentWeekStart]);
 
   useEffect(() => {
     if (!autoReturnToday || tab !== 'calendar') return;
-    const isCurrentWeek = weekStart.getTime() === thisWeekStart.getTime();
+    const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
     if (isCurrentWeek) return;
-    const id = window.setTimeout(() => setWeekStart(thisWeekStart), AUTO_RETURN_MS);
+    const id = window.setTimeout(
+      () => setWeekStart(currentWeekStart),
+      AUTO_RETURN_MS,
+    );
     return () => window.clearTimeout(id);
-  }, [autoReturnToday, tab, weekStart, thisWeekStart]);
+  }, [autoReturnToday, tab, weekStart, currentWeekStart]);
 
   const loadSources = useCallback(async () => {
     const next = await api.getSources();
@@ -189,7 +209,7 @@ export default function App() {
         clockFormat={clockFormat}
         onPrev={() => setWeekStart((d) => addDays(d, -RANGE_DAYS))}
         onNext={() => setWeekStart((d) => addDays(d, RANGE_DAYS))}
-        onToday={() => setWeekStart(startOfWeek(new Date()))}
+        onToday={() => setWeekStart(startOfWeek(new Date(), timeZone))}
         onSync={handleSync}
         syncing={syncing}
         onSettings={() => setSettingsOpen(true)}

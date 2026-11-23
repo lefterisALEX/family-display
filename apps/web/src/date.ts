@@ -1,12 +1,80 @@
 import type { CalendarEvent } from './types';
 
-export function startOfWeek(input: Date): Date {
+const DAYS_FROM_MONDAY: Record<string, number> = {
+  Sun: 6,
+  Mon: 0,
+  Tue: 1,
+  Wed: 2,
+  Thu: 3,
+  Fri: 4,
+  Sat: 5,
+};
+
+function shiftDateStr(dateStr: string, days: number): string {
+  return new Date(Date.parse(`${dateStr}T00:00:00Z`) + days * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function zonedOffsetMs(date: Date, timeZone: string): number {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const parts: Record<string, string> = {};
+  for (const part of dtf.formatToParts(date)) {
+    if (part.type !== 'literal') parts[part.type] = part.value;
+  }
+  const asUTC = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour) % 24,
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  return asUTC - date.getTime();
+}
+
+// Returns a Date for 00:00 local time on the given YYYY-MM-DD date in timeZone.
+function zonedMidnight(dateStr: string, timeZone: string): Date {
+  const noon = new Date(`${dateStr}T12:00:00Z`);
+  const offset = zonedOffsetMs(noon, timeZone);
+  const midnight = new Date(noon.getTime() - offset - 12 * 3_600_000);
+  const midnightOffset = zonedOffsetMs(midnight, timeZone);
+  if (midnightOffset !== offset) {
+    return new Date(midnight.getTime() + (offset - midnightOffset));
+  }
+  return midnight;
+}
+
+export function startOfWeek(input: Date, timeZone?: string): Date {
+  if (timeZone) {
+    const dateStr = toDateString(input, timeZone);
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      weekday: 'short',
+    }).format(input);
+    const diff = DAYS_FROM_MONDAY[weekday] ?? 0;
+    return zonedMidnight(shiftDateStr(dateStr, -diff), timeZone);
+  }
+
   const d = new Date(input);
   const day = d.getDay();
   const diff = (day + 6) % 7;
   d.setDate(d.getDate() - diff);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+export function startOfCurrentWeek(timeZone?: string): Date {
+  return startOfWeek(new Date(), timeZone);
 }
 
 export function addDays(input: Date, days: number): Date {
